@@ -3,71 +3,67 @@ import {
   StreamCall,
   StreamVideo,
   StreamVideoClient,
-  User,
+  User as StreamUser,
   Call,
 } from "@stream-io/video-react-sdk";
 import { generateUserVideoToken } from "@/app/services/user.service";
 import Spinner from "./Spinner";
 
-// ✅ Only fix the 'any' types, keep everything else the same
-interface UserData {
+// Use the same User type from your page
+interface UserMetadata {
+  userName?: string;
+  userColor?: string;
+}
+
+interface User {
   id: string;
-  user_metadata?: {
-    userName?: string;
-  };
+  email?: string;
+  user_metadata?: UserMetadata;
 }
 
 interface Props {
   children: React.ReactNode;
-  userData: UserData;
+  userData: User | null; // ✅ matches your page's User type
   callId: string;
 }
 
-const VideoWrapper: React.FC<Props> = (props) => {
-  const { children, userData, callId } = props;
-  
-  // ✅ Replace 'any' with proper types
+const VideoWrapper: React.FC<Props> = ({ children, userData, callId }) => {
   const [client, setClient] = useState<StreamVideoClient | null>(null);
   const [call, setCall] = useState<Call | null>(null);
 
-  // ✅ Memoize to fix React Hook dependency warning
   const initVideoCall = useCallback(async () => {
-    if (!userData?.id) {
-      return; // Early return if no user data
-    }
+    if (!userData?.id) return;
 
     try {
       const { token } = await generateUserVideoToken(userData.id);
 
-      // Set up the user object
-      const user: User = {
+      const streamUser: StreamUser = {
         id: userData.id,
         name: userData.user_metadata?.userName,
         image: `https://getstream.io/random_svg/?id=${userData.user_metadata?.userName}&name=${userData.user_metadata?.userName}`,
       };
 
-      const video_client = new StreamVideoClient({
+      const videoClient = new StreamVideoClient({
         apiKey: process.env.NEXT_PUBLIC_STREAM_CHAT_API_KEY!,
-        user,
+        user: streamUser,
         token,
       });
 
-      setClient(video_client);
-      const callType = "development";
-      const call = video_client.call(callType, callId);
-      call.join({ create: true });
+      setClient(videoClient);
 
-      setCall(call);
+      const callType = "development";
+      const newCall = videoClient.call(callType, callId);
+      await newCall.join({ create: true });
+
+      setCall(newCall);
     } catch (error) {
-      console.log(error);
+      console.error("Video init error:", error);
     }
-  }, [userData, callId]); // ✅ Add proper dependencies
+  }, [userData, callId]);
 
   useEffect(() => {
-    if (userData) {
-      initVideoCall();
-    }
-  }, [userData, initVideoCall]); // ✅ Add initVideoCall to dependencies
+    initVideoCall();
+  }, [initVideoCall]);
 
   if (!client || !call) {
     return (
