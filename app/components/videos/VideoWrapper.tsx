@@ -32,14 +32,18 @@ const VideoWrapper: React.FC<Props> = (props) => {
 
   // ✅ Memoize to fix React Hook dependency warning
   const initVideoCall = useCallback(async () => {
+    if (!userData?.id) {
+      return; // Early return if no user data
+    }
+
     try {
-      const { token } = await generateUserVideoToken(userData?.id);
+      const { token } = await generateUserVideoToken(userData.id);
 
       // Set up the user object
       const user: User = {
-        id: userData?.id,
-        name: userData?.user_metadata?.userName,
-        image: `https://getstream.io/random_svg/?id=${userData?.user_metadata?.userName}&name=${userData?.user_metadata?.userName}`,
+        id: userData.id,
+        name: userData.user_metadata?.userName,
+        image: `https://getstream.io/random_svg/?id=${userData.user_metadata?.userName}&name=${userData.user_metadata?.userName}`,
       };
 
       const video_client = new StreamVideoClient({
